@@ -374,8 +374,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
       <p class="hint">Nella finestra di stampa scegli margini <b>Nessuno</b> e scala <b>100%</b>. Se la prova esce spostata, correggi con i due valori qui sopra.</p>
     </div>
     <div class="card">
-      <h2>Archivio condiviso</h2>
-      <p class="hint">Collega questo dispositivo al progetto Google ETICHETTATRICE: prodotti e cartellini salvati diventano gli stessi su PC, tablet e telefoni.</p>
+      <h2>Archivio su Google Drive</h2>
+      <p class="hint">Collega questo dispositivo al progetto Google ETICHETTATRICE: archivio prodotti, cartellini salvati e ultimi QR vengono salvati su Google Drive e sono gli stessi su PC, tablet e telefoni.</p>
       <label class="f" id="cloud-url-f"><span>Indirizzo dell'app web Google (finisce con /exec)</span><input type="text" id="cloud-url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <label class="f"><span>PIN</span><input type="password" id="cloud-pin" autocomplete="off"></label>
       <div><span class="chip" id="cloud-status">Non collegato</span></div>
@@ -490,7 +490,7 @@ async function cloudSync(){
     else {
       S.pending = S.pending.slice(ops.length);
       if (S.pending.length) cloudAgain = true;
-      else { S.ean = j.ean || []; S.labels = j.labels || []; eanListRender(); carListRender(); }
+      else { S.ean = j.ean || []; S.labels = j.labels || []; if (Array.isArray(j.qr)) S.qrHist = j.qr; eanListRender(); carListRender(); qrHistRender(); }
       save(); setCount(); ok = true;
       cloudState('Collegato. Aggiornato alle ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}), 'ok');
     }
@@ -505,7 +505,8 @@ function cloudOp(t, kind, item){
   save(); cloudSync();
 }
 function cloudPushAll(){
-  S.pending = S.ean.map(x=>({t:'up',kind:'ean',id:x.id,item:x})).concat(S.labels.map(x=>({t:'up',kind:'labels',id:x.id,item:x})));
+  S.qrHist.forEach(x=>{ if (!x.id) x.id = uid(); });
+  S.pending = S.ean.map(x=>({t:'up',kind:'ean',id:x.id,item:x})).concat(S.labels.map(x=>({t:'up',kind:'labels',id:x.id,item:x})), S.qrHist.slice().reverse().map(x=>({t:'up',kind:'qr',id:x.id,item:x})));
   save(); return cloudSync();
 }
 function cloudInit(){
@@ -791,9 +792,12 @@ function qrRender(){
 }
 function qrRemember(){
   const d = S.dQr, text = qrContent(); if (!text) return;
+  const old = S.qrHist.find(x=>x.k === text);
+  const it = {id:(old && old.id) || uid(), k:text, d:{type:d.type,text:d.text,ssid:d.ssid,pass:d.pass,cap:d.cap,size:d.size,level:d.level}};
   S.qrHist = S.qrHist.filter(x=>x.k !== text);
-  S.qrHist.unshift({k:text, d:{type:d.type,text:d.text,ssid:d.ssid,pass:d.pass,cap:d.cap,size:d.size,level:d.level}});
-  S.qrHist = S.qrHist.slice(0,12); save(); qrHistRender();
+  S.qrHist.unshift(it);
+  const extra = S.qrHist.slice(30); S.qrHist = S.qrHist.slice(0,30); save(); qrHistRender();
+  cloudOp('up','qr',it); extra.forEach(x=>{ if (x.id) cloudOp('del','qr',x); });
 }
 function qrHistRender(){
   const box = $('qr-hist'); box.innerHTML = '';
@@ -802,7 +806,7 @@ function qrHistRender(){
     box.append(el('div', {class:'item'},
       el('button', {class:'main', type:'button', onclick:()=>{ Object.assign(S.dQr, x.d); qrFill(); qrRender(); window.scrollTo({top:0,behavior:'smooth'}); }},
         el('b', null, x.d.type==='wifi' ? 'Wi-Fi: ' + x.d.ssid : x.d.text), el('small', null, x.d.cap || (x.d.size + ' cm'))),
-      el('button', {class:'btn sm del', type:'button', 'aria-label':'Togli dalla lista', onclick:()=>{ S.qrHist.splice(S.qrHist.indexOf(x),1); save(); qrHistRender(); }}, 'Togli')));
+      el('button', {class:'btn sm del', type:'button', 'aria-label':'Togli dalla lista', onclick:()=>{ S.qrHist.splice(S.qrHist.indexOf(x),1); save(); qrHistRender(); if (x.id) cloudOp('del','qr',x); }}, 'Togli')));
   });
 }
 let paintQrType;
