@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b2a6f">
+<title>ETICHETTATRICE</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="ETICHETTATRICE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<style>
+/* Layout: barra blu in alto, schede; ogni scheda = colonna comandi + colonna anteprima (impilate su telefono) */
+:root{
+  --blue:#0b2a6f; --blue-2:#12409f; --orange:#f26a0f; --orange-2:#d95a05;
+  --bg:#eef1f6; --card:#ffffff; --ink:#152033; --muted:#5d6a80; --line:#d6dce7;
+  --ok:#17794a; --warn:#a55a00; --bad:#b3261e;
+  --f-body:'Barlow','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --f-display:'Barlow Condensed','Arial Narrow','Segoe UI',sans-serif;
+  --r:12px;
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+.top{background:var(--blue);color:#fff;position:sticky;top:0;z-index:20}
+.top-in{max-width:1180px;margin:0 auto;padding:10px 16px 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 24px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:24px;letter-spacing:.5px;text-transform:uppercase;padding-bottom:8px}
+.brand span{color:var(--orange)}
+.tabs{display:flex;gap:4px;flex:1 1 420px;overflow-x:auto}
+.tab{background:none;border:0;color:#c9d5f2;padding:10px 14px;font-weight:600;border-radius:10px 10px 0 0;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--bg);color:var(--blue)}
+
+main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+.view{display:none}
+.view.on{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:18px;align-items:start}
+.view.one.on{grid-template-columns:minmax(0,640px)}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.side{position:sticky;top:76px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+h2{font-family:var(--f-display);font-size:22px;margin:0;text-transform:uppercase;letter-spacing:.4px;color:var(--blue)}
+.hint{color:var(--muted);font-size:14px;margin:0}
+
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f>span,.lab{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;flex-wrap:wrap;gap:12px}
+.row>.f{flex:1 1 140px}
+.row>.f.s{flex:0 1 110px}
+input[type=text],input[type=number],input[type=password],select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;min-height:46px}
+textarea{min-height:90px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
+.big{font-size:20px;font-weight:600;letter-spacing:.5px;font-variant-numeric:tabular-nums}
+
+.btn{border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;min-height:46px;background:#e3e8f1;color:var(--blue)}
+.btn:hover{background:#d5dcea}
+.btn.pri{background:var(--orange);color:#fff}
+.btn.pri:hover{background:var(--orange-2)}
+.btn.blue{background:var(--blue);color:#fff}
+.btn.blue:hover{background:var(--blue-2)}
+.btn.sm{min-height:36px;padding:6px 10px;font-size:14px}
+.btn.del{color:var(--bad)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.acts{display:flex;flex-wrap:wrap;gap:10px}
+.acts>.btn{flex:1 1 130px}
+
+.seg{display:flex;background:#e3e8f1;border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{flex:1 1 0;border:0;background:none;padding:8px 10px;border-radius:8px;font-weight:600;cursor:pointer;color:var(--muted);min-height:38px}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--blue);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+
+.chip{display:inline-block;padding:5px 10px;border-radius:999px;font-size:14px;font-weight:600;background:#e3e8f1;color:var(--muted)}
+.chip.ok{background:#dff3e8;color:var(--ok)}
+.chip.warn{background:#fdebd3;color:var(--warn)}
+.chip.bad{background:#fbe0de;color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-weight:600;cursor:pointer;color:var(--blue)}
+.chips button:hover{border-color:var(--blue-2)}
+
+/* Anteprima */
+.pv{background:repeating-conic-gradient(#dde3ee 0 25%,#e9edf5 0 50%) 0 0/16px 16px;border-radius:10px;padding:16px;display:flex;justify-content:center;overflow:hidden}
+.pv-box{position:relative}
+.pv-box>*{transform-origin:0 0;box-shadow:0 3px 12px rgba(10,30,80,.25)}
+.pv-note{font-size:13px;color:var(--muted);text-align:center;margin:0}
+
+/* Etichette (unità reali in mm) */
+.lbl{position:relative;background:#fff;color:#000;overflow:hidden;font-family:Arial,Helvetica,sans-serif;flex:none}
+.lbl .cut{position:absolute;inset:1.5mm;padding:1mm 1.5mm;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6mm}
+.lbl .cut.dash{border:.35mm dashed #000}
+.lbl .codes{flex:1 1 0;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;gap:2mm}
+.lbl .codes svg.bc{flex:1 1 0;min-width:0;height:100%}
+.lbl .codes .qr{height:100%;aspect-ratio:1;flex:none}
+.lbl .codes .qr.solo{height:100%}
+.lbl .qr svg,.lbl .qr img{width:100%;height:100%;display:block}
+.lbl .code-txt{font-size:7pt;font-family:monospace;letter-spacing:.3px}
+.lbl .desc{font-weight:700;text-transform:uppercase;text-align:center;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+.lbl .frame{position:absolute;inset:1mm;border:0 solid #000}
+.lbl .txt{position:absolute;inset:0;padding:1.5mm;display:flex;flex-direction:column}
+.lbl .txt-in{display:flex;flex-direction:column;flex:none;width:max-content}
+.lbl .ln{white-space:pre;line-height:1.08}
+.lbl .logo{position:absolute;height:auto}
+.lbl.test{border:.3mm solid #000;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;text-align:center}
+.sheet{padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff}
+.sheet .q{display:block}
+.sheet .q svg,.sheet .q img{width:100%;height:100%;display:block}
+.sheet .cap{font-weight:700;text-align:center;margin-top:2mm;font-size:11pt;overflow-wrap:anywhere}
+
+/* Editor righe cartellino */
+.lines{display:flex;flex-direction:column;gap:8px}
+.line{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#f4f6fa;border:1px solid var(--line);border-radius:10px;padding:8px}
+.line input[type=text]{flex:1 1 180px;min-height:40px;padding:8px 10px}
+.line input[type=number]{width:70px;min-height:40px;padding:8px 6px;text-align:center}
+.fmt{display:flex;gap:3px}
+.fmt button{width:40px;height:40px;border:1.5px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-family:Georgia,serif;font-size:16px}
+.fmt button[aria-pressed="true"]{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Archivi */
+.list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}
+.item{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:10px;padding:8px 10px;background:#fff}
+.item .main{flex:1 1 auto;min-width:0;text-align:left;background:none;border:0;cursor:pointer;padding:4px}
+.item .main b{display:block;color:var(--orange-2);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .main small{display:block;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.item input[type=number]{width:64px;min-height:36px;padding:4px 6px;text-align:center}
+.empty{color:var(--muted);font-size:14px;padding:10px;text-align:center;border:1.5px dashed var(--line);border-radius:10px}
+.sw{display:flex;align-items:center;gap:10px;font-weight:600}
+.sw input{width:22px;height:22px;accent-color:var(--blue)}
+
+.toasts{position:fixed;left:0;right:0;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:50;pointer-events:none;padding:0 16px}
+.toast{pointer-events:auto;background:var(--ink);color:#fff;border-radius:10px;padding:11px 14px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:100%}
+.toast button{background:none;border:0;color:#ffb37a;font-weight:700;cursor:pointer;padding:4px}
+.libwarn{background:#fbe0de;color:var(--bad);padding:12px 16px;font-weight:600;display:none}
+
+#print-root{position:absolute;left:-10000px;top:0;visibility:hidden}
+
+@media (max-width:860px){
+  .view.on,.view.one.on{grid-template-columns:minmax(0,1fr)}
+  .side{position:static}
+  #view-cartellini .side{order:-1}
+  .top-in{padding-top:8px;gap:0 16px}
+  .brand{font-size:20px;padding-bottom:4px}
+  .tab{padding:9px 11px;font-size:15px}
+}
+@media (prefers-reduced-motion:no-preference){.btn,.tab,.seg button{transition:background .15s}}
+
+@media print{
+  html,body{background:#fff!important;margin:0!important;padding:0!important}
+  .top,main,.toasts,.libwarn{display:none!important}
+  #print-root{position:static;visibility:visible;left:0}
+  .pg{overflow:hidden;display:flex;align-items:center;justify-content:center;break-after:page;page-break-after:always;break-inside:avoid}
+  .pg:last-child{break-after:auto;page-break-after:auto}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+<style id="page-style"></style>
+</head>
+<body>
+
+<div class="libwarn" id="libwarn">Non riesco a caricare i generatori di codici. Controlla la connessione a Internet e ricarica la pagina.</div>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">Etichettatrice <span>Unieuro RC</span></div>
+    <nav class="tabs" role="tablist" aria-label="Sezioni">
+      <button class="tab" role="tab" data-tab="ean" id="tab-ean">Etichette EAN</button>
+      <button class="tab" role="tab" data-tab="qr" id="tab-qr">Codice QR</button>
+      <button class="tab" role="tab" data-tab="cartellini" id="tab-cartellini">Cartellini</button>
+      <button class="tab" role="tab" data-tab="impostazioni" id="tab-impostazioni">Impostazioni</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ EAN ============ -->
+<section class="view" id="view-ean">
+  <div class="col">
+    <div class="card">
+      <h2>Etichetta prodotto</h2>
+      <label class="f"><span>Codice EAN o codice prodotto</span>
+        <input type="text" id="ean-code" class="big" inputmode="numeric" autocomplete="off" placeholder="Es. 8001234567895">
+      </label>
+      <div><span class="chip" id="ean-status">Scrivi o spara un codice</span></div>
+      <label class="f"><span>Descrizione articolo</span>
+        <input type="text" id="ean-desc" maxlength="40" autocomplete="off" placeholder="Es. IPHONE 15 PRO 256GB">
+      </label>
+      <div class="row">
+        <div class="f"><span class="lab">Cosa stampare</span>
+          <div class="seg" id="ean-mode">
+            <button type="button" data-v="bc">Barcode</button>
+            <button type="button" data-v="qr">QR</button>
+            <button type="button" data-v="both">Tutti e due</button>
+          </div>
+        </div>
+        <label class="f s"><span>Copie</span><input type="number" id="ean-copies" min="1" max="200" value="1"></label>
+      </div>
+      <div class="acts">
+        <button class="btn pri" id="ean-print" type="button">Stampa</button>
+        <button class="btn blue" id="ean-save" type="button">Salva in archivio</button>
+        <button class="btn" id="ean-queue-add" type="button">Aggiungi alla coda</button>
+        <button class="btn" id="ean-clear" type="button">Svuota campi</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Archivio prodotti</h2>
+      <input type="text" id="ean-search" placeholder="Cerca per codice o descrizione" aria-label="Cerca in archivio">
+      <div class="list" id="ean-list"></div>
+      <details>
+        <summary class="lab" style="cursor:pointer">Incolla un elenco di codici</summary>
+        <p class="hint" style="margin:8px 0">Una riga per prodotto: <b>codice;descrizione</b>. Le righe vanno nella coda di stampa.</p>
+        <textarea id="ean-bulk" placeholder="8001234567895;IPHONE 15 PRO&#10;8009876543217;GALAXY S24"></textarea>
+        <div class="acts" style="margin-top:8px"><button class="btn" id="ean-bulk-add" type="button">Metti in coda</button></div>
+      </details>
+    </div>
+  </div>
+
+  <div class="col side">
+    <div class="card">
+      <h2>Anteprima</h2>
+      <div class="pv"><div class="pv-box" id="ean-pv"></div></div>
+      <p class="pv-note" id="ean-pv-note"></p>
+    </div>
+    <div class="card">
+      <h2>Coda di stampa</h2>
+      <p class="hint">Prepara più etichette e stampale in un colpo solo.</p>
+      <div class="list" id="ean-queue"></div>
+      <div class="acts">
+        <button class="btn pri" id="ean-queue-print" type="button">Stampa la coda</button>
+        <button class="btn" id="ean-queue-clear" type="button">Svuota</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QR ============ -->
+<section class="view" id="view-qr">
+  <div class="col">
+    <div class="card">
+      <h2>Codice QR</h2>
+      <div class="seg" id="qr-type">
+        <button type="button" data-v="text">Link o testo</button>
+        <button type="button" data-v="wifi">Wi-Fi</button>
+      </div>
+      <div id="qr-f-text">
+        <label class="f"><span>Link o testo</span>
+          <textarea id="qr-text" placeholder="https://www.unieuro.it"></textarea>
+        </label>
+      </div>
+      <div id="qr-f-wifi" hidden>
+        <div class="row">
+          <label class="f"><span>Nome rete (SSID)</span><input type="text" id="qr-ssid" autocomplete="off"></label>
+          <label class="f"><span>Password</span><input type="text" id="qr-pass" autocomplete="off"></label>
+        </div>
+      </div>
+      <label class="f"><span>Scritta sotto il QR (facoltativa)</span>
+        <input type="text" id="qr-cap" maxlength="60" placeholder="Es. Inquadra per la scheda prodotto">
+      </label>
+      <div class="row">
+        <label class="f"><span>Lato su foglio</span>
+          <select id="qr-size">
+            <option value="3">3 cm</option><option value="4">4 cm</option><option value="5">5 cm</option>
+            <option value="6">6 cm</option><option value="8">8 cm</option><option value="10">10 cm</option>
+          </select>
+        </label>
+        <label class="f"><span>Robustezza</span>
+          <select id="qr-level">
+            <option value="M">Normale</option><option value="H">Alta (resiste a graffi e pieghe)</option>
+          </select>
+        </label>
+        <label class="f s"><span>Copie</span><input type="number" id="qr-copies" min="1" max="100" value="1"></label>
+      </div>
+      <div><span class="chip" id="qr-status"></span></div>
+      <div class="acts">
+        <button class="btn pri" id="qr-print-sheet" type="button">Stampa su foglio</button>
+        <button class="btn blue" id="qr-print-label" type="button">Stampa su etichetta</button>
+        <button class="btn" id="qr-png" type="button">Scarica PNG</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Ultimi QR</h2>
+      <div class="list" id="qr-hist"></div>
+    </div>
+  </div>
+  <div class="col side">
+    <div class="card">
+      <h2>Anteprima</h2>
+      <div class="pv"><div class="pv-box" id="qr-pv"></div></div>
+      <p class="pv-note" id="qr-pv-note"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CARTELLINI ============ -->
+<section class="view" id="view-cartellini">
+  <div class="col">
+    <div class="card">
+      <h2>Cartellino libero</h2>
+      <div class="f"><span class="lab">Parti da un modello</span>
+        <div class="chips" id="car-tpl"></div>
+      </div>
+      <div class="f"><span class="lab">Righe: testo, grandezza (pt), stile</span>
+        <div class="lines" id="car-lines"></div>
+      </div>
+      <div class="acts"><button class="btn" id="car-add" type="button">Aggiungi riga</button></div>
+      <div class="row">
+        <div class="f" style="flex-basis:240px"><span class="lab">Allineamento</span>
+          <div class="seg" id="car-ah">
+            <button type="button" data-v="l">Sinistra</button><button type="button" data-v="c">Centro</button><button type="button" data-v="r">Destra</button>
+          </div>
+        </div>
+        <div class="f" style="flex-basis:240px"><span class="lab">Posizione</span>
+          <div class="seg" id="car-av">
+            <button type="button" data-v="t">Alto</button><button type="button" data-v="c">Centro</button><button type="button" data-v="b">Basso</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <label class="f s"><span>Bordo (pt)</span><input type="number" id="car-border" min="0" max="8" step="0.5" value="1.5"></label>
+        <label class="f s"><span>Copie</span><input type="number" id="car-copies" min="1" max="200" value="1"></label>
+        <label class="sw" style="align-self:end;min-height:46px"><input type="checkbox" id="car-fit" checked> Rimpicciolisci se non entra</label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Logo</h2>
+      <div class="row">
+        <label class="f"><span>Immagine</span><input type="file" id="car-logo-file" accept="image/*"></label>
+        <label class="f s"><span>Larghezza (mm)</span><input type="number" id="car-logo-w" min="4" max="50" value="12"></label>
+        <label class="f"><span>Angolo</span>
+          <select id="car-logo-pos">
+            <option value="tr">In alto a destra</option><option value="tl">In alto a sinistra</option>
+            <option value="br">In basso a destra</option><option value="bl">In basso a sinistra</option>
+          </select>
+        </label>
+      </div>
+      <div class="acts"><button class="btn del" id="car-logo-del" type="button">Togli il logo</button></div>
+    </div>
+  </div>
+  <div class="col side">
+    <div class="card">
+      <h2>Anteprima</h2>
+      <div class="pv"><div class="pv-box" id="car-pv"></div></div>
+      <p class="pv-note" id="car-pv-note"></p>
+      <div class="acts">
+        <button class="btn pri" id="car-print" type="button">Stampa</button>
+        <button class="btn blue" id="car-save" type="button">Salva in archivio</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Cartellini salvati</h2>
+      <div class="list" id="car-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IMPOSTAZIONI ============ -->
+<section class="view one" id="view-impostazioni">
+  <div class="col">
+    <div class="card">
+      <h2>Formato etichetta</h2>
+      <p class="hint">Misura del rotolo nella stampante. Vale per etichette EAN, cartellini e QR su etichetta.</p>
+      <div class="row">
+        <label class="f"><span>Larghezza (mm)</span><input type="number" id="set-w" min="20" max="150" step="0.5"></label>
+        <label class="f"><span>Altezza (mm)</span><input type="number" id="set-h" min="10" max="150" step="0.5"></label>
+      </div>
+      <div class="row">
+        <label class="f"><span>Sposta stampa a destra (mm)</span><input type="number" id="set-ox" min="-10" max="10" step="0.5"></label>
+        <label class="f"><span>Sposta stampa in basso (mm)</span><input type="number" id="set-oy" min="-10" max="10" step="0.5"></label>
+      </div>
+      <label class="sw"><input type="checkbox" id="set-dash"> Bordo tratteggiato di ritaglio sulle etichette EAN</label>
+      <div class="acts"><button class="btn" id="set-test" type="button">Stampa etichetta di prova</button></div>
+      <p class="hint">Nella finestra di stampa scegli margini <b>Nessuno</b> e scala <b>100%</b>. Se la prova esce spostata, correggi con i due valori qui sopra.</p>
+    </div>
+    <div class="card">
+      <h2>Archivio condiviso</h2>
+      <p class="hint">Collega questo dispositivo al progetto Google ETICHETTATRICE: prodotti e cartellini salvati diventano gli stessi su PC, tablet e telefoni.</p>
+      <label class="f" id="cloud-url-f"><span>Indirizzo dell'app web Google (finisce con /exec)</span><input type="text" id="cloud-url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
+      <label class="f"><span>PIN</span><input type="password" id="cloud-pin" autocomplete="off"></label>
+      <div><span class="chip" id="cloud-status">Non collegato</span></div>
+      <div class="acts">
+        <button class="btn blue" id="cloud-connect" type="button">Collega</button>
+        <button class="btn" id="cloud-sync" type="button">Aggiorna ora</button>
+        <button class="btn del" id="cloud-off" type="button">Scollega</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Copia di sicurezza</h2>
+      <p class="hint">Scarica una copia degli archivi di questo dispositivo, oppure caricane una.</p>
+      <p class="hint" id="set-count"></p>
+      <div class="acts">
+        <button class="btn blue" id="set-export" type="button">Scarica copia (.json)</button>
+        <button class="btn" id="set-import-btn" type="button">Carica copia</button>
+      </div>
+      <input type="file" id="set-import" accept="application/json,.json" hidden>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="print-root" aria-hidden="true"></div>
+
+<script>
+"use strict";
+/* ---------- utilità ---------- */
+const $ = id => document.getElementById(id);
+function el(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const k in (attrs||{})){
+    const v = attrs[k];
+    if (k === 'class') e.className = v;
+    else if (k === 'style') e.style.cssText = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids) if (c != null) e.append(c);
+  return e;
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const clamp = (n, a, b, d) => { n = parseFloat(n); return isNaN(n) ? d : Math.min(b, Math.max(a, n)); };
+function toast(msg, actLabel, act){
+  const t = el('div', {class:'toast'}, el('span', null, msg));
+  if (actLabel) t.append(el('button', {type:'button', onclick:()=>{ act(); t.remove(); }}, actLabel));
+  $('toasts').append(t);
+  setTimeout(()=>t.remove(), actLabel ? 7000 : 3200);
+}
+
+/* Indirizzo dell'app web Google Apps Script (finisce con /exec).
+   Se lo incolli qui tra le virgolette, sui dispositivi basta scrivere il PIN. */
+const CLOUD_URL = "";
+
+/* ---------- dati ---------- */
+const KEY = 'unieuro_rc_etichette_v1';
+const DEF = {
+  set:{w:56,h:30,ox:0,oy:0,dash:true},
+  ean:[], labels:[], qrHist:[], queue:[],
+  dEan:{code:'',desc:'',mode:'bc'},
+  dQr:{type:'text',text:'https://www.unieuro.it',ssid:'',pass:'',cap:'',size:5,level:'M'},
+  dCar:null, migrated:false, cloud:{url:'',pin:''}, pending:[]
+};
+const TPL = [
+  {n:'Sottocosto', lines:[{text:'OFFERTA',size:11,b:true},{text:'SOTTOCOSTO',size:21,b:true},{text:'fino a esaurimento scorte',size:8,i:true}]},
+  {n:'Esposto', lines:[{text:'PRODOTTO',size:11,b:false},{text:'ESPOSTO',size:24,b:true},{text:'chiedi a un addetto',size:8,i:true}]},
+  {n:'Ultimo pezzo', lines:[{text:'ULTIMO',size:20,b:true},{text:'PEZZO',size:20,b:true}]},
+  {n:'Riservato', lines:[{text:'RISERVATO',size:20,b:true},{text:'Cliente:',size:10},{text:'Data ritiro:',size:10}]},
+  {n:'Ricondizionato', lines:[{text:'RICONDIZIONATO',size:15,b:true},{text:'garanzia 12 mesi',size:10}]},
+  {n:'Vuoto', lines:[{text:'',size:14,b:true}]}
+];
+const newCar = (t) => ({lines:JSON.parse(JSON.stringify((t||TPL[0]).lines)).map(l=>({text:l.text,size:l.size,b:!!l.b,i:!!l.i,u:!!l.u})),
+  ah:'c',av:'c',border:1.5,fit:true,logo:'',logoW:12,logoPos:'tr'});
+let S = JSON.parse(JSON.stringify(DEF));
+let memOnly = false;
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if (raw){ const o = JSON.parse(raw); S = Object.assign(S, o); S.set = Object.assign({}, DEF.set, o.set||{}); S.dEan = Object.assign({}, DEF.dEan, o.dEan||{}); S.dQr = Object.assign({}, DEF.dQr, o.dQr||{}); S.cloud = Object.assign({}, DEF.cloud, o.cloud||{}); if (!Array.isArray(S.pending)) S.pending = []; }
+    if (!S.migrated){ // recupera gli archivi delle vecchie pagine, se aperte dallo stesso posto
+      try{ (JSON.parse(localStorage.getItem('unieuro_db_v4'))||[]).forEach(x=>{ if (x && x.code && !S.ean.some(e=>e.code===x.code)) S.ean.push({id:uid(),code:String(x.code),desc:String(x.desc||'')}); }); }catch(e){}
+      try{ (JSON.parse(localStorage.getItem('unieuro_labels'))||[]).forEach(x=>{ if (!x || !x.lines) return;
+        S.labels.push({id:uid(),lines:x.lines.map(l=>({text:String(l.text||''),size:Math.round((l.size||14)*0.75),b:!!l.bold,i:!!l.italic,u:!!l.underline})),
+          ah:'l',av:'t',border:clamp(x.b,0,8,1.5),fit:true,logo:x.imgData||'',logoW:clamp(x.imgW,4,50,12),logoPos:'tr'}); }); }catch(e){}
+      S.migrated = true;
+    }
+  }catch(e){ memOnly = true; }
+  if (!S.dCar) S.dCar = newCar();
+}
+let saveT;
+function save(){
+  clearTimeout(saveT);
+  saveT = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ if(!memOnly){ memOnly = true; toast('Memoria del browser non disponibile o piena: le modifiche non vengono salvate.'); } } }, 150);
+}
+
+/* ---------- archivio condiviso ---------- */
+const cloudUrl = () => (CLOUD_URL || S.cloud.url || '').trim();
+const cloudOn = () => !!(cloudUrl() && S.cloud.pin);
+let cloudBusy = false, cloudAgain = false;
+function cloudState(msg, cls){ const e = $('cloud-status'); e.className = 'chip' + (cls ? ' '+cls : ''); e.textContent = msg; }
+async function cloudSync(){
+  if (!cloudOn()) return false;
+  if (cloudBusy){ cloudAgain = true; return false; }
+  cloudBusy = true; let ok = false;
+  const ops = S.pending.slice(0, 300);
+  try{
+    const res = await fetch(cloudUrl(), {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({pin:S.cloud.pin, ops:ops})});
+    const j = await res.json();
+    if (!j.ok) cloudState(j.error==='pin' ? 'PIN sbagliato' : j.error==='pin-non-impostato' ? 'Nel progetto Google il PIN è ancora CAMBIAMI: cambialo e rifai il deployment' : 'Errore dal progetto Google: ' + j.error, 'bad');
+    else {
+      S.pending = S.pending.slice(ops.length);
+      if (S.pending.length) cloudAgain = true;
+      else { S.ean = j.ean || []; S.labels = j.labels || []; eanListRender(); carListRender(); }
+      save(); setCount(); ok = true;
+      cloudState('Collegato. Aggiornato alle ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}), 'ok');
+    }
+  }catch(e){ cloudState('Non raggiungo l\'archivio condiviso' + (S.pending.length ? ': ' + S.pending.length + ' modifiche in attesa' : '') + '. Controlla indirizzo e connessione.', 'warn'); }
+  cloudBusy = false;
+  if (cloudAgain){ cloudAgain = false; if (ok) return cloudSync(); }
+  return ok;
+}
+function cloudOp(t, kind, item){
+  if (!cloudOn()) return;
+  S.pending.push(t === 'del' ? {t:t, kind:kind, id:item.id} : {t:t, kind:kind, id:item.id, item:item});
+  save(); cloudSync();
+}
+function cloudPushAll(){
+  S.pending = S.ean.map(x=>({t:'up',kind:'ean',id:x.id,item:x})).concat(S.labels.map(x=>({t:'up',kind:'labels',id:x.id,item:x})));
+  save(); return cloudSync();
+}
+function cloudInit(){
+  $('cloud-url-f').hidden = !!CLOUD_URL;
+  $('cloud-url').value = S.cloud.url; $('cloud-pin').value = S.cloud.pin;
+  const btns = () => { $('cloud-sync').disabled = $('cloud-off').disabled = !cloudOn(); };
+  $('cloud-connect').onclick = async ()=>{
+    S.cloud.url = $('cloud-url').value.trim(); S.cloud.pin = $('cloud-pin').value.trim(); save(); btns();
+    if (!cloudOn()){ cloudState('Scrivi indirizzo e PIN', 'warn'); return; }
+    cloudState('Collegamento in corso…');
+    if (await cloudPushAll()) toast('Archivio condiviso collegato');
+  };
+  $('cloud-sync').onclick = ()=>{ cloudState('Aggiornamento…'); cloudSync(); };
+  $('cloud-off').onclick = ()=>{ S.cloud.pin = ''; S.pending = []; $('cloud-pin').value = ''; save(); btns(); cloudState('Non collegato'); };
+  btns();
+  if (cloudOn()){ cloudState('Collegamento in corso…'); cloudSync(); }
+  setInterval(()=>{ if (!document.hidden) cloudSync(); }, 90000);
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) cloudSync(); });
+}
+
+/* ---------- codici ---------- */
+const libsOk = () => typeof QRCode !== 'undefined' && typeof JsBarcode !== 'undefined';
+function ean13Check(d12){ let s=0; for(let i=0;i<12;i++) s += (+d12[i]) * (i%2 ? 3 : 1); return (10 - s%10) % 10; }
+function ean8Check(d7){ let s=0; for(let i=0;i<7;i++) s += (+d7[i]) * (i%2 ? 1 : 3); return (10 - s%10) % 10; }
+function analyze(raw){
+  const c = (raw||'').trim();
+  if (!c) return null;
+  if (/^\d{13}$/.test(c)){
+    const k = ean13Check(c);
+    return k === +c[12] ? {fmt:'EAN13',value:c,cls:'ok',msg:'EAN-13 valido'}
+      : {fmt:'CODE128',value:c,cls:'bad',msg:'Ultima cifra sbagliata: dovrebbe essere '+k+'. Ricontrolla il codice.'};
+  }
+  if (/^\d{12}$/.test(c)) return {fmt:'EAN13',value:c+ean13Check(c),cls:'warn',msg:'12 cifre: aggiungo la cifra di controllo '+ean13Check(c)};
+  if (/^\d{8}$/.test(c)){
+    const k = ean8Check(c);
+    return k === +c[7] ? {fmt:'EAN8',value:c,cls:'ok',msg:'EAN-8 valido'} : {fmt:'CODE128',value:c,cls:'warn',msg:'Non è un EAN-8: stampo come Code 128'};
+  }
+  if (/^[\x20-\x7e]+$/.test(c)) return {fmt:'CODE128',value:c,cls:'',msg:'Codice libero: stampo come Code 128'};
+  return {fmt:null,value:c,cls:'bad',msg:'Caratteri non ammessi nel barcode: usa il QR'};
+}
+function barcodeSVG(a){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','bc');
+  JsBarcode(svg, a.value, {format:a.fmt, width:2, height:60, fontSize:18, margin:0, textMargin:1, font:'Arial'});
+  const w = parseFloat(svg.getAttribute('width')), h = parseFloat(svg.getAttribute('height'));
+  if (w && h){ svg.setAttribute('viewBox','0 0 '+w+' '+h); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width=''; svg.style.height=''; }
+  return svg;
+}
+function qrModel(text, level){
+  const tmp = document.createElement('div');
+  const q = new QRCode(tmp, {text:text, width:256, height:256, correctLevel:QRCode.CorrectLevel[level||'M']});
+  const m = q._oQRCode;
+  if (m && m.getModuleCount) return {n:m.getModuleCount(), dark:(r,c)=>m.isDark(r,c)};
+  const cv = tmp.querySelector('canvas');
+  return {img: cv ? cv.toDataURL('image/png') : ''};
+}
+function qrNode(text, level, quiet){
+  const m = qrModel(text, level);
+  if (!m.n) return el('img', {src:m.img, alt:'QR'});
+  const z = quiet == null ? 4 : quiet, size = m.n + z*2;
+  let d = '';
+  for (let r=0;r<m.n;r++){ let c=0; while(c<m.n){ if(m.dark(r,c)){ let e=c; while(e<m.n && m.dark(r,e)) e++; d += 'M'+(c+z)+' '+(r+z)+'h'+(e-c)+'v1h-'+(e-c)+'z'; c=e; } else c++; } }
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 '+size+' '+size); svg.setAttribute('shape-rendering','crispEdges');
+  svg.innerHTML = '<rect width="'+size+'" height="'+size+'" fill="#fff"/><path d="'+d+'" fill="#000"/>';
+  return svg;
+}
+function qrPNG(text, level, px){
+  const m = qrModel(text, level);
+  if (!m.n) return m.img;
+  const z = 4, size = m.n + z*2, k = Math.max(1, Math.floor(px/size));
+  const cv = document.createElement('canvas'); cv.width = cv.height = size*k;
+  const g = cv.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,cv.width,cv.height); g.fillStyle='#000';
+  for (let r=0;r<m.n;r++) for (let c=0;c<m.n;c++) if (m.dark(r,c)) g.fillRect((c+z)*k,(r+z)*k,k,k);
+  return cv.toDataURL('image/png');
+}
+
+/* ---------- costruzione etichette ---------- */
+const mm = v => v + 'mm';
+function lblBase(cls){ return el('div', {class:'lbl'+(cls?' '+cls:''), style:'width:'+mm(S.set.w)+';height:'+mm(S.set.h)}); }
+function descSize(t){ const n = t.length; return n<=16 ? 10 : n<=22 ? 8.5 : n<=30 ? 7 : 6; }
+function eanLabel(it){
+  const L = lblBase(), cut = el('div', {class:'cut'+(S.set.dash?' dash':'')});
+  const a = analyze(it.code), codes = el('div', {class:'codes'});
+  let mode = it.mode || 'bc';
+  if (a && !a.fmt) mode = 'qr';
+  try{
+    if (a && (mode==='bc' || mode==='both')) codes.append(barcodeSVG(a));
+    if (a && (mode==='qr' || mode==='both')) codes.append(el('div', {class:'qr'}, qrNode(a.value, 'M', 1)));
+  }catch(e){ codes.append(el('div', {style:'font-size:8pt'}, 'Codice non stampabile')); }
+  cut.append(codes);
+  if (a && mode==='qr') cut.append(el('div', {class:'code-txt'}, a.value));
+  if (it.desc) cut.append(el('div', {class:'desc', style:'font-size:'+descSize(it.desc)+'pt'}, it.desc));
+  L.append(cut); return L;
+}
+function qrLabel(d, text){
+  const L = lblBase(), cut = el('div', {class:'cut'}), codes = el('div', {class:'codes'});
+  codes.append(el('div', {class:'qr'}, qrNode(text, d.level, 2)));
+  cut.append(codes);
+  if (d.cap) cut.append(el('div', {class:'desc', style:'text-transform:none;font-size:'+descSize(d.cap)+'pt'}, d.cap));
+  L.append(cut); return L;
+}
+function qrSheet(d, text){
+  const s = el('div', {class:'sheet', style:'width:'+d.size+'cm'});
+  s.append(el('div', {class:'q', style:'width:'+d.size+'cm;height:'+d.size+'cm'}, qrNode(text, d.level, 4)));
+  if (d.cap) s.append(el('div', {class:'cap'}, d.cap));
+  return s;
+}
+function carLabel(c){
+  const L = lblBase(), fr = el('div', {class:'frame', style:'border-width:'+c.border+'pt'});
+  const J = {t:'flex-start',c:'center',b:'flex-end'}, A = {l:'flex-start',c:'center',r:'flex-end'}, T = {l:'left',c:'center',r:'right'};
+  const txt = el('div', {class:'txt', style:'justify-content:'+J[c.av]+';align-items:'+A[c.ah]});
+  const inn = el('div', {class:'txt-in', style:'text-align:'+T[c.ah]+';align-items:'+A[c.ah]});
+  inn.dataset.fit = c.fit ? '1' : '';
+  inn.dataset.o = ({l:'0%',c:'50%',r:'100%'})[c.ah] + ' ' + ({t:'0%',c:'50%',b:'100%'})[c.av];
+  c.lines.forEach(l => inn.append(el('div', {class:'ln', style:'font-size:'+l.size+'pt;font-weight:'+(l.b?700:400)+';font-style:'+(l.i?'italic':'normal')+';text-decoration:'+(l.u?'underline':'none')}, l.text || ' ')));
+  txt.append(inn); fr.append(txt);
+  if (c.logo){
+    const p = c.logoPos || 'tr';
+    fr.append(el('img', {class:'logo', src:c.logo, alt:'', style:'width:'+mm(c.logoW)+';'+(p[0]==='t'?'top':'bottom')+':1mm;'+(p[1]==='l'?'left':'right')+':1mm'}));
+  }
+  L.append(fr); return L;
+}
+function fitText(root){
+  root.querySelectorAll('.txt-in').forEach(inn=>{
+    inn.style.transform = '';
+    if (!inn.dataset.fit) return;
+    const box = inn.parentElement, cs = getComputedStyle(box);
+    const aw = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const k = Math.min(1, aw/inn.offsetWidth, ah/inn.offsetHeight);
+    if (k < 1 && k > 0){ inn.style.transformOrigin = inn.dataset.o; inn.style.transform = 'scale('+k.toFixed(3)+')'; }
+  });
+}
+function showPreview(boxId, node){
+  const box = $(boxId); box.innerHTML = ''; box.append(node);
+  fitText(node); scalePreview(box);
+}
+function scalePreview(box){
+  const n = box.firstElementChild; if (!n) return;
+  n.style.transform = '';
+  const avail = box.parentElement.clientWidth - 32, w = n.offsetWidth, h = n.offsetHeight;
+  if (!w || avail <= 0) return;
+  const k = Math.min(avail / w, 1.7);
+  n.style.transform = 'scale('+k+')';
+  box.style.width = (w*k)+'px'; box.style.height = (h*k)+'px';
+}
+
+/* ---------- stampa ---------- */
+function printNodes(nodes, mode){
+  if (!nodes.length) return;
+  const root = $('print-root'); root.innerHTML = '';
+  const w = S.set.w, h = S.set.h;
+  if (mode === 'sheet'){
+    $('page-style').textContent = '@page{margin:10mm}';
+    const wrap = el('div', {style:'display:flex;flex-wrap:wrap;gap:6mm'});
+    nodes.forEach(n => wrap.append(el('div', {style:'break-inside:avoid'}, n)));
+    root.append(wrap);
+  } else {
+    $('page-style').textContent = '@page{size:'+w+'mm '+h+'mm;margin:0}';
+    nodes.forEach(n=>{
+      if (S.set.ox || S.set.oy) n.style.transform = 'translate('+mm(S.set.ox)+','+mm(S.set.oy)+')';
+      root.append(el('div', {class:'pg', style:'width:'+mm(w)+';height:'+mm(h-0.3)}, n));
+    });
+  }
+  fitText(root);
+  const imgs = [...root.querySelectorAll('img')].filter(i=>!i.complete);
+  Promise.all(imgs.map(i=>new Promise(r=>{ i.onload = i.onerror = r; }))).then(()=>setTimeout(()=>{
+    try{ window.print(); }catch(e){ toast('Questo browser non permette la stampa da qui.'); }
+  }, 60));
+}
+const rep = (make, n) => Array.from({length:clamp(n,1,200,1)}, make);
+
+/* ---------- scheda EAN ---------- */
+function segInit(id, get, set){
+  const box = $(id);
+  const paint = () => box.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v === get() ? 'true' : 'false'));
+  box.addEventListener('click', e=>{ const b = e.target.closest('button'); if (!b) return; set(b.dataset.v); paint(); });
+  paint(); return paint;
+}
+let eanEditId = null, paintEanMode;
+function eanRead(){ S.dEan.code = $('ean-code').value.trim(); S.dEan.desc = $('ean-desc').value.trim(); }
+function eanRender(){
+  eanRead(); save();
+  const a = analyze(S.dEan.code), st = $('ean-status');
+  st.className = 'chip' + (a && a.cls ? ' '+a.cls : '');
+  st.textContent = a ? a.msg : 'Scrivi o spara un codice';
+  const ok = !!a && libsOk();
+  ['ean-print','ean-save','ean-queue-add'].forEach(i=>$(i).disabled = !ok);
+  $('ean-save').textContent = eanEditId ? 'Aggiorna in archivio' : 'Salva in archivio';
+  if (!libsOk()) return;
+  showPreview('ean-pv', eanLabel(a ? S.dEan : {code:'8001234567895',desc:'ESEMPIO DESCRIZIONE',mode:S.dEan.mode}));
+  $('ean-pv-note').textContent = (a ? '' : 'Esempio. ') + 'Etichetta ' + S.set.w + ' × ' + S.set.h + ' mm';
+}
+function eanListRender(){
+  const q = $('ean-search').value.trim().toLowerCase(), box = $('ean-list'); box.innerHTML = '';
+  const items = S.ean.filter(x=>!q || x.code.toLowerCase().includes(q) || x.desc.toLowerCase().includes(q));
+  if (!items.length){ box.append(el('div', {class:'empty'}, S.ean.length ? 'Nessun prodotto trovato' : 'Archivio vuoto. Salva qui i prodotti che ristampi spesso.')); return; }
+  items.forEach(x=>{
+    box.append(el('div', {class:'item'},
+      el('button', {class:'main', type:'button', title:'Carica', onclick:()=>{ eanEditId = x.id; $('ean-code').value = x.code; $('ean-desc').value = x.desc; eanRender(); window.scrollTo({top:0,behavior:'smooth'}); }}, el('b', null, x.code), el('small', null, x.desc || 'Senza descrizione')),
+      el('button', {class:'btn sm', type:'button', onclick:()=>{ queueAdd({code:x.code,desc:x.desc,mode:S.dEan.mode,n:1}); }}, 'In coda'),
+      el('button', {class:'btn sm del', type:'button', 'aria-label':'Elimina '+x.code, onclick:()=>{
+        const i = S.ean.indexOf(x); S.ean.splice(i,1); if (eanEditId===x.id) eanEditId=null; save(); eanListRender(); eanRender(); cloudOp('del','ean',x);
+        toast('Prodotto eliminato', 'Annulla', ()=>{ S.ean.splice(i,0,x); save(); eanListRender(); cloudOp('up','ean',x); });
+      }}, 'Elimina')));
+  });
+}
+function queueAdd(it){
+  const same = S.queue.find(q=>q.code===it.code && q.desc===it.desc && q.mode===it.mode);
+  if (same) same.n = Math.min(200, same.n + it.n); else S.queue.push(Object.assign({id:uid()}, it));
+  save(); queueRender();
+}
+function queueRender(){
+  const box = $('ean-queue'); box.innerHTML = '';
+  const tot = S.queue.reduce((s,q)=>s+q.n,0);
+  $('ean-queue-print').disabled = !tot; $('ean-queue-clear').disabled = !tot;
+  $('ean-queue-print').textContent = tot ? 'Stampa la coda (' + tot + ')' : 'Stampa la coda';
+  if (!S.queue.length){ box.append(el('div', {class:'empty'}, 'Coda vuota')); return; }
+  S.queue.forEach(q=>{
+    box.append(el('div', {class:'item'},
+      el('div', {class:'main', style:'cursor:default'}, el('b', null, q.code), el('small', null, (q.desc||'Senza descrizione') + ' · ' + ({bc:'barcode',qr:'QR',both:'barcode + QR'})[q.mode])),
+      el('input', {type:'number', min:1, max:200, value:q.n, 'aria-label':'Copie di '+q.code, onchange:e=>{ q.n = clamp(e.target.value,1,200,1); save(); queueRender(); }}),
+      el('button', {class:'btn sm del', type:'button', 'aria-label':'Togli '+q.code, onclick:()=>{ S.queue.splice(S.queue.indexOf(q),1); save(); queueRender(); }}, 'Togli')));
+  });
+}
+function eanInit(){
+  $('ean-code').value = S.dEan.code; $('ean-desc').value = S.dEan.desc;
+  paintEanMode = segInit('ean-mode', ()=>S.dEan.mode, v=>{ S.dEan.mode = v; eanRender(); });
+  $('ean-code').addEventListener('input', eanRender);
+  $('ean-desc').addEventListener('input', eanRender);
+  $('ean-code').addEventListener('keydown', e=>{ if (e.key==='Enter'){ e.preventDefault(); $('ean-desc').focus(); } });
+  $('ean-search').addEventListener('input', eanListRender);
+  $('ean-print').onclick = ()=>{ const it = Object.assign({}, S.dEan); printNodes(rep(()=>eanLabel(it), $('ean-copies').value)); };
+  $('ean-save').onclick = ()=>{
+    const a = analyze(S.dEan.code); if (!a) return;
+    const code = a.fmt==='EAN13' ? a.value : S.dEan.code;
+    const cur = S.ean.find(x=>x.id===eanEditId) || S.ean.find(x=>x.code===code);
+    let it = cur;
+    if (cur){ cur.code = code; cur.desc = S.dEan.desc; toast('Prodotto aggiornato'); }
+    else { it = {id:uid(),code:code,desc:S.dEan.desc}; S.ean.unshift(it); toast('Salvato in archivio'); }
+    eanEditId = null; save(); eanListRender(); eanRender(); cloudOp('up','ean',it);
+  };
+  $('ean-queue-add').onclick = ()=>{ queueAdd({code:S.dEan.code,desc:S.dEan.desc,mode:S.dEan.mode,n:clamp($('ean-copies').value,1,200,1)}); toast('Aggiunto alla coda'); };
+  $('ean-clear').onclick = ()=>{ eanEditId = null; $('ean-code').value=''; $('ean-desc').value=''; $('ean-copies').value=1; eanRender(); $('ean-code').focus(); };
+  $('ean-queue-print').onclick = ()=>{ const nodes=[]; S.queue.forEach(q=>{ for(let i=0;i<q.n;i++) nodes.push(eanLabel(q)); }); printNodes(nodes); };
+  $('ean-queue-clear').onclick = ()=>{ const old = S.queue; S.queue = []; save(); queueRender(); toast('Coda svuotata', 'Annulla', ()=>{ S.queue = old; save(); queueRender(); }); };
+  $('ean-bulk-add').onclick = ()=>{
+    let n = 0, bad = 0;
+    $('ean-bulk').value.split(/\r?\n/).forEach(r=>{ r = r.trim(); if (!r) return; const p = r.split(/[;\t]/); const code = (p[0]||'').trim(); const a = analyze(code);
+      if (!a || !a.fmt){ bad++; return; } queueAdd({code:code,desc:(p[1]||'').trim().slice(0,40),mode:S.dEan.mode,n:1}); n++; });
+    if (n) $('ean-bulk').value = '';
+    toast(n + ' righe in coda' + (bad ? ', ' + bad + ' scartate' : ''));
+  };
+  eanListRender(); queueRender(); eanRender();
+}
+
+/* ---------- scheda QR ---------- */
+function qrContent(){
+  const d = S.dQr;
+  if (d.type === 'wifi'){
+    if (!d.ssid) return '';
+    const esc = s => s.replace(/([\\;,:"])/g, '\\$1');
+    return 'WIFI:T:' + (d.pass ? 'WPA' : 'nopass') + ';S:' + esc(d.ssid) + ';' + (d.pass ? 'P:' + esc(d.pass) + ';' : '') + ';';
+  }
+  return d.text.trim();
+}
+function qrRender(){
+  const d = S.dQr;
+  d.text = $('qr-text').value; d.ssid = $('qr-ssid').value.trim(); d.pass = $('qr-pass').value; d.cap = $('qr-cap').value.trim();
+  d.size = clamp($('qr-size').value,3,10,5); d.level = $('qr-level').value; save();
+  $('qr-f-text').hidden = d.type !== 'text'; $('qr-f-wifi').hidden = d.type !== 'wifi';
+  const text = qrContent(), st = $('qr-status'); let ok = !!text && libsOk(), node = null;
+  if (ok){ try{ node = qrSheet(d, text); }catch(e){ ok = false; st.className='chip bad'; st.textContent='Testo troppo lungo per un QR: accorcialo o scegli robustezza Normale'; } }
+  if (ok){
+    const dense = text.length > 120 && d.size <= 4;
+    st.className = 'chip ' + (dense ? 'warn' : 'ok');
+    st.textContent = dense ? 'Molto testo in poco spazio: stampa più grande per leggerlo bene' : text.length + ' caratteri, pronto';
+  } else if (!text){ st.className='chip'; st.textContent = d.type==='wifi' ? 'Scrivi il nome della rete' : 'Scrivi un link o un testo'; }
+  ['qr-print-sheet','qr-print-label','qr-png'].forEach(i=>$(i).disabled = !ok);
+  if (node){ showPreview('qr-pv', node); $('qr-pv-note').textContent = 'Su foglio: ' + d.size + ' × ' + d.size + ' cm reali'; }
+  else { $('qr-pv').innerHTML = ''; $('qr-pv').style.height = ''; $('qr-pv-note').textContent = ''; }
+}
+function qrRemember(){
+  const d = S.dQr, text = qrContent(); if (!text) return;
+  S.qrHist = S.qrHist.filter(x=>x.k !== text);
+  S.qrHist.unshift({k:text, d:{type:d.type,text:d.text,ssid:d.ssid,pass:d.pass,cap:d.cap,size:d.size,level:d.level}});
+  S.qrHist = S.qrHist.slice(0,12); save(); qrHistRender();
+}
+function qrHistRender(){
+  const box = $('qr-hist'); box.innerHTML = '';
+  if (!S.qrHist.length){ box.append(el('div', {class:'empty'}, 'Qui trovi gli ultimi QR stampati o scaricati.')); return; }
+  S.qrHist.forEach(x=>{
+    box.append(el('div', {class:'item'},
+      el('button', {class:'main', type:'button', onclick:()=>{ Object.assign(S.dQr, x.d); qrFill(); qrRender(); window.scrollTo({top:0,behavior:'smooth'}); }},
+        el('b', null, x.d.type==='wifi' ? 'Wi-Fi: ' + x.d.ssid : x.d.text), el('small', null, x.d.cap || (x.d.size + ' cm'))),
+      el('button', {class:'btn sm del', type:'button', 'aria-label':'Togli dalla lista', onclick:()=>{ S.qrHist.splice(S.qrHist.indexOf(x),1); save(); qrHistRender(); }}, 'Togli')));
+  });
+}
+let paintQrType;
+function qrFill(){
+  const d = S.dQr;
+  $('qr-text').value = d.text; $('qr-ssid').value = d.ssid; $('qr-pass').value = d.pass; $('qr-cap').value = d.cap;
+  $('qr-size').value = String(d.size); $('qr-level').value = d.level; if (paintQrType) paintQrType();
+}
+function qrInit(){
+  paintQrType = segInit('qr-type', ()=>S.dQr.type, v=>{ S.dQr.type = v; qrRender(); });
+  qrFill();
+  ['qr-text','qr-ssid','qr-pass','qr-cap'].forEach(i=>$(i).addEventListener('input', qrRender));
+  ['qr-size','qr-level'].forEach(i=>$(i).addEventListener('change', qrRender));
+  $('qr-print-sheet').onclick = ()=>{ const t = qrContent(), d = Object.assign({}, S.dQr); qrRemember(); printNodes(rep(()=>qrSheet(d,t), $('qr-copies').value), 'sheet'); };
+  $('qr-print-label').onclick = ()=>{ const t = qrContent(), d = Object.assign({}, S.dQr); qrRemember(); printNodes(rep(()=>qrLabel(d,t), $('qr-copies').value)); };
+  $('qr-png').onclick = ()=>{
+    try{ const a = el('a', {href:qrPNG(qrContent(), S.dQr.level, 1200), download:'qr-etichettatrice.png'}); document.body.append(a); a.click(); a.remove(); qrRemember(); }
+    catch(e){ toast('Non riesco a scaricare il file da questo browser.'); }
+  };
+  qrHistRender(); qrRender();
+}
+
+/* ---------- scheda Cartellini ---------- */
+function carLinesRender(){
+  const box = $('car-lines'), c = S.dCar; box.innerHTML = '';
+  c.lines.forEach((l, i)=>{
+    const fb = (k, t, lab, st) => el('button', {type:'button', 'aria-pressed':l[k]?'true':'false', title:lab, 'aria-label':lab, style:st, onclick:e=>{ l[k] = !l[k]; e.currentTarget.setAttribute('aria-pressed', l[k]?'true':'false'); carRender(); }}, t);
+    box.append(el('div', {class:'line'},
+      el('input', {type:'text', id:'car-l-'+i, value:l.text, placeholder:'Testo riga '+(i+1), 'aria-label':'Testo riga '+(i+1), oninput:e=>{ l.text = e.target.value; carRender(); }}),
+      el('input', {type:'number', id:'car-s-'+i, min:5, max:60, value:l.size, 'aria-label':'Grandezza riga '+(i+1)+' in punti', oninput:e=>{ l.size = clamp(e.target.value,5,60,12); carRender(); }}),
+      el('div', {class:'fmt'}, fb('b','B','Grassetto','font-weight:700'), fb('i','I','Corsivo','font-style:italic'), fb('u','U','Sottolineato','text-decoration:underline')),
+      el('button', {class:'btn sm del', type:'button', disabled:c.lines.length<2, 'aria-label':'Elimina riga '+(i+1), onclick:()=>{ c.lines.splice(i,1); carLinesRender(); carRender(); }}, 'Elimina')));
+  });
+}
+function carRender(){
+  const c = S.dCar;
+  c.border = clamp($('car-border').value,0,8,1.5); c.fit = $('car-fit').checked;
+  c.logoW = clamp($('car-logo-w').value,4,50,12); c.logoPos = $('car-logo-pos').value; save();
+  $('car-logo-del').disabled = !c.logo;
+  showPreview('car-pv', carLabel(c));
+  $('car-pv-note').textContent = 'Etichetta ' + S.set.w + ' × ' + S.set.h + ' mm';
+}
+let paintCarAh, paintCarAv;
+function carFill(){
+  const c = S.dCar;
+  $('car-border').value = c.border; $('car-fit').checked = c.fit !== false; $('car-logo-w').value = c.logoW; $('car-logo-pos').value = c.logoPos || 'tr';
+  if (paintCarAh){ paintCarAh(); paintCarAv(); }
+  carLinesRender(); carRender();
+}
+function carListRender(){
+  const box = $('car-list'); box.innerHTML = '';
+  if (!S.labels.length){ box.append(el('div', {class:'empty'}, 'Nessun cartellino salvato.')); return; }
+  S.labels.forEach(x=>{
+    const t = x.lines.map(l=>l.text).filter(Boolean);
+    box.append(el('div', {class:'item'},
+      el('button', {class:'main', type:'button', onclick:()=>{ S.dCar = JSON.parse(JSON.stringify(x)); delete S.dCar.id; carFill(); }}, el('b', null, t[0] || 'Cartellino'), el('small', null, t.slice(1).join(' · ') || (x.lines.length + ' righe'))),
+      el('button', {class:'btn sm del', type:'button', 'aria-label':'Elimina cartellino', onclick:()=>{
+        const i = S.labels.indexOf(x); S.labels.splice(i,1); save(); carListRender(); cloudOp('del','labels',x);
+        toast('Cartellino eliminato', 'Annulla', ()=>{ S.labels.splice(i,0,x); save(); carListRender(); cloudOp('up','labels',x); });
+      }}, 'Elimina')));
+  });
+}
+function carInit(){
+  TPL.forEach(t=>$('car-tpl').append(el('button', {type:'button', onclick:()=>{ const keep = S.dCar; S.dCar = Object.assign(newCar(t), {logo:keep.logo,logoW:keep.logoW,logoPos:keep.logoPos,border:keep.border}); carFill(); }}, t.n)));
+  paintCarAh = segInit('car-ah', ()=>S.dCar.ah, v=>{ S.dCar.ah = v; carRender(); });
+  paintCarAv = segInit('car-av', ()=>S.dCar.av, v=>{ S.dCar.av = v; carRender(); });
+  $('car-add').onclick = ()=>{ S.dCar.lines.push({text:'',size:12,b:false,i:false,u:false}); carLinesRender(); carRender(); const i = $('car-l-'+(S.dCar.lines.length-1)); if (i) i.focus(); };
+  ['car-border','car-logo-w'].forEach(i=>$(i).addEventListener('input', carRender));
+  ['car-fit','car-logo-pos'].forEach(i=>$(i).addEventListener('change', carRender));
+  $('car-logo-file').addEventListener('change', e=>{
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = ()=>{ const im = new Image();
+      im.onload = ()=>{ const k = Math.min(1, 400/Math.max(im.width, im.height)); const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(im.width*k)); cv.height = Math.max(1, Math.round(im.height*k));
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); S.dCar.logo = cv.toDataURL('image/png'); carRender(); };
+      im.onerror = ()=>toast('Non riesco a leggere questa immagine.');
+      im.src = rd.result; };
+    rd.readAsDataURL(f);
+  });
+  $('car-logo-del').onclick = ()=>{ S.dCar.logo = ''; $('car-logo-file').value = ''; carRender(); };
+  $('car-print').onclick = ()=>{ const c = JSON.parse(JSON.stringify(S.dCar)); printNodes(rep(()=>carLabel(c), $('car-copies').value)); };
+  $('car-save').onclick = ()=>{ const it = Object.assign(JSON.parse(JSON.stringify(S.dCar)), {id:uid()}); S.labels.unshift(it); save(); carListRender(); toast('Cartellino salvato'); cloudOp('up','labels',it); };
+  carListRender(); carFill();
+}
+
+/* ---------- impostazioni ---------- */
+function setCount(){ $('set-count').textContent = S.ean.length + ' prodotti, ' + S.labels.length + ' cartellini, ' + S.qrHist.length + ' QR recenti' + (memOnly ? '. Attenzione: questo browser non sta salvando i dati.' : '.'); }
+function renderAll(){ eanRender(); qrRender(); carRender(); setCount(); }
+function setInit(){
+  const s = S.set;
+  $('set-w').value = s.w; $('set-h').value = s.h; $('set-ox').value = s.ox; $('set-oy').value = s.oy; $('set-dash').checked = s.dash;
+  const rd = ()=>{ s.w = clamp($('set-w').value,20,150,56); s.h = clamp($('set-h').value,10,150,30); s.ox = clamp($('set-ox').value,-10,10,0); s.oy = clamp($('set-oy').value,-10,10,0); s.dash = $('set-dash').checked; save(); };
+  ['set-w','set-h','set-ox','set-oy','set-dash'].forEach(i=>$(i).addEventListener('change', rd));
+  $('set-test').onclick = ()=>{ rd(); const L = lblBase('test'); L.append(el('div', null, 'PROVA', el('br'), s.w + ' × ' + s.h + ' mm')); printNodes([L]); };
+  $('set-export').onclick = ()=>{
+    try{ const data = JSON.stringify({app:'etichette-unieuro-rc', v:1, set:S.set, ean:S.ean, labels:S.labels, qrHist:S.qrHist}, null, 1);
+      const url = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+      const a = el('a', {href:url, download:'etichettatrice-copia-' + new Date().toISOString().slice(0,10) + '.json'}); document.body.append(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    }catch(e){ toast('Non riesco a scaricare il file da questo browser.'); }
+  };
+  $('set-import-btn').onclick = ()=>$('set-import').click();
+  $('set-import').addEventListener('change', e=>{
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{
+        const o = JSON.parse(r.result); if (!o || o.app !== 'etichette-unieuro-rc') throw 0;
+        let n = 0;
+        (o.ean||[]).forEach(x=>{ if (x && x.code && !S.ean.some(y=>y.code===x.code)){ S.ean.push({id:uid(),code:String(x.code),desc:String(x.desc||'')}); n++; } });
+        (o.labels||[]).forEach(x=>{ if (x && Array.isArray(x.lines) && !S.labels.some(y=>JSON.stringify(y.lines)===JSON.stringify(x.lines))){ S.labels.push(Object.assign(newCar(), x, {id:uid()})); n++; } });
+        save(); eanListRender(); carListRender(); setCount(); toast('Copia caricata: ' + n + ' elementi nuovi'); if (cloudOn()) cloudPushAll();
+      }catch(err){ toast('File non valido: scegli una copia scaricata da questa app.'); }
+      e.target.value = '';
+    };
+    r.readAsText(f);
+  });
+  setCount();
+}
+
+/* ---------- schede ---------- */
+const TABS = ['ean','qr','cartellini','impostazioni'];
+function showTab(t){
+  if (!TABS.includes(t)) t = 'ean';
+  TABS.forEach(x=>{ $('view-'+x).classList.toggle('on', x===t); $('tab-'+x).setAttribute('aria-selected', x===t ? 'true' : 'false'); });
+  renderAll();
+}
+document.querySelector('.tabs').addEventListener('click', e=>{ const b = e.target.closest('.tab'); if (!b) return; try{ location.hash = b.dataset.tab; }catch(err){} showTab(b.dataset.tab); });
+window.addEventListener('hashchange', ()=>showTab(location.hash.slice(1)));
+let rsT; window.addEventListener('resize', ()=>{ clearTimeout(rsT); rsT = setTimeout(()=>['ean-pv','qr-pv','car-pv'].forEach(i=>scalePreview($(i))), 120); });
+
+load();
+if (!libsOk()) $('libwarn').style.display = 'block';
+eanInit(); qrInit(); carInit(); setInit(); cloudInit();
+showTab(location.hash.slice(1));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderAll);
+</script>
+</body>
+</html>
