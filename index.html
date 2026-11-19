@@ -148,6 +148,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
 .toast{pointer-events:auto;background:var(--ink);color:#fff;border-radius:10px;padding:11px 14px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:100%}
 .toast button{background:none;border:0;color:#ffb37a;font-weight:700;cursor:pointer;padding:4px}
 .libwarn{background:#fbe0de;color:var(--bad);padding:12px 16px;font-weight:600;display:none}
+.cbar{display:none;background:#fdebd3;color:#6b3a00;border-bottom:1px solid #f3c48f}
+.cbar.on{display:block}
+.cbar.bad{background:#fbe0de;color:var(--bad);border-color:#f0b3ae}
+.cbar-in{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-weight:600}
+.cbar-in span{flex:1 1 300px}
+.cbar .btn{min-height:40px;padding:8px 14px}
 
 #print-root{position:absolute;left:-10000px;top:0;visibility:hidden}
 
@@ -163,7 +169,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
 
 @media print{
   html,body{background:#fff!important;margin:0!important;padding:0!important}
-  .top,main,.toasts,.libwarn{display:none!important}
+  .top,main,.toasts,.libwarn,.cbar{display:none!important}
   #print-root{position:static;visibility:visible;left:0}
   .pg{overflow:hidden;display:flex;align-items:center;justify-content:center;break-after:page;page-break-after:always;break-inside:avoid}
   .pg:last-child{break-after:auto;page-break-after:auto}
@@ -187,6 +193,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
     </nav>
   </div>
 </header>
+
+<div class="cbar" id="cbar" role="status"><div class="cbar-in"><span id="cbar-txt"></span><button class="btn blue" id="cbar-btn" type="button">Collega a Google Drive</button></div></div>
 
 <main>
 
@@ -395,6 +403,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
         <button class="btn" id="cloud-sync" type="button">Aggiorna ora</button>
         <button class="btn del" id="cloud-off" type="button">Scollega</button>
       </div>
+      <div class="f" id="cloud-link-f" hidden>
+        <span>Link per collegare gli altri dispositivi</span>
+        <input type="text" id="cloud-link" readonly>
+        <p class="hint" style="margin:4px 0 0">Apri questo link su PC, tablet o telefono: l'indirizzo Google si compila da solo, basta scrivere il PIN. Il PIN non è nel link.</p>
+        <div class="acts" style="margin-top:6px"><button class="btn" id="cloud-link-copy" type="button">Copia link</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Backup su Google Drive</h2>
+      <p class="hint">Ogni notte il progetto Google salva una copia completa dell'archivio nella cartella <b>ETICHETTATRICE - Backup</b> del tuo Drive e tiene le ultime 30. Puoi farne una anche adesso.</p>
+      <div><span class="chip" id="bk-status">Collega l'archivio per vedere i backup</span></div>
+      <div class="acts"><button class="btn blue" id="bk-now" type="button">Fai un backup adesso</button></div>
     </div>
     <div class="card">
       <h2>Copia di sicurezza</h2>
@@ -441,7 +461,7 @@ function toast(msg, actLabel, act){
 
 /* Indirizzo dell'app web Google Apps Script (finisce con /exec).
    Se lo incolli qui tra le virgolette, sui dispositivi basta scrivere il PIN. */
-const CLOUD_URL = "";
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbyWRh80A-L9VIzilOSDA643aOay1YUoI6MZ71EgyCU1TfbRQ5uLcBwLnep_nszDCNg/exec";
 
 /* ---------- dati ---------- */
 const KEY = 'unieuro_rc_etichette_v1';
@@ -487,7 +507,30 @@ function save(){
 /* ---------- archivio condiviso ---------- */
 const cloudUrl = () => (CLOUD_URL || S.cloud.url || '').trim();
 const cloudOn = () => !!(cloudUrl() && S.cloud.pin);
-let cloudBusy = false, cloudAgain = false;
+let cloudBusy = false, cloudAgain = false, cloudFail = false;
+function cloudBar(){
+  const b = $('cbar'), n = S.ean.length + S.labels.length + S.qrHist.length;
+  if (!cloudOn()){
+    b.className = 'cbar on';
+    $('cbar-txt').textContent = 'Questo dispositivo non è collegato a Google Drive: ' + (n ? 'i ' + n + ' elementi salvati qui non si vedono sugli altri dispositivi.' : 'quello che salvi resta solo qui.');
+    $('cbar-btn').textContent = 'Collega a Google Drive';
+  } else if (cloudFail){
+    b.className = 'cbar on bad';
+    $('cbar-txt').textContent = 'Non riesco a salvare su Google Drive' + (S.pending.length ? ' (' + S.pending.length + ' modifiche in attesa)' : '') + ': ' + $('cloud-status').textContent;
+    $('cbar-btn').textContent = 'Controlla il collegamento';
+  } else b.className = 'cbar';
+}
+function cloudLink(){
+  const u = cloudUrl(), f = $('cloud-link-f');
+  f.hidden = !u || !/^https?:/.test(location.protocol);
+  if (!f.hidden) $('cloud-link').value = location.origin + location.pathname + '?archivio=' + encodeURIComponent(u);
+}
+function bkShow(b){
+  const e = $('bk-status');
+  if (b && b.url){ e.className = 'chip ok'; e.textContent = 'Ultimo backup: ' + new Date(b.ts).toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); }
+  else if (b && b.error){ e.className = 'chip bad'; e.textContent = 'Backup non riuscito: ' + b.error; }
+  else { e.className = 'chip warn'; e.textContent = 'Nessun backup ancora: nel progetto Google esegui di nuovo setup'; }
+}
 function cloudState(msg, cls){ const e = $('cloud-status'); e.className = 'chip' + (cls ? ' '+cls : ''); e.textContent = msg; }
 async function cloudSync(){
   if (!cloudOn()) return false;
@@ -497,16 +540,18 @@ async function cloudSync(){
   try{
     const res = await fetch(cloudUrl(), {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({pin:S.cloud.pin, ops:ops})});
     const j = await res.json();
+    if (!j.ok) cloudFail = true;
     if (!j.ok) cloudState(j.error==='pin' ? 'PIN sbagliato' : j.error==='pin-non-impostato' ? 'Nel progetto Google il PIN è ancora CAMBIAMI: cambialo e rifai il deployment' : 'Errore dal progetto Google: ' + j.error, 'bad');
     else {
       S.pending = S.pending.slice(ops.length);
+      cloudFail = false; if (j.backup) bkShow(j.backup);
       if (S.pending.length) cloudAgain = true;
       else { S.ean = j.ean || []; S.labels = j.labels || []; if (Array.isArray(j.qr)) S.qrHist = j.qr; eanListRender(); carListRender(); qrHistRender(); }
       save(); setCount(); ok = true;
       cloudState('Collegato. Aggiornato alle ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}), 'ok');
     }
-  }catch(e){ cloudState('Non raggiungo l\'archivio condiviso' + (S.pending.length ? ': ' + S.pending.length + ' modifiche in attesa' : '') + '. Controlla indirizzo e connessione.', 'warn'); }
-  cloudBusy = false;
+  }catch(e){ cloudFail = true; cloudState('Non raggiungo l\'archivio condiviso' + (S.pending.length ? ': ' + S.pending.length + ' modifiche in attesa' : '') + '. Controlla indirizzo e connessione.', 'warn'); }
+  cloudBusy = false; cloudBar();
   if (cloudAgain){ cloudAgain = false; if (ok) return cloudSync(); }
   return ok;
 }
@@ -521,18 +566,42 @@ function cloudPushAll(){
   save(); return cloudSync();
 }
 function cloudInit(){
+  try{
+    const q = new URLSearchParams(location.search).get('archivio');
+    if (q && /^https:\/\/script\.google(usercontent)?\.com\//.test(q)){
+      S.cloud.url = q; save();
+      history.replaceState(null, '', location.pathname + location.hash);
+      setTimeout(()=>{ showTab('impostazioni'); try{ location.hash = 'impostazioni'; }catch(e){} if (!S.cloud.pin){ $('cloud-pin').focus(); toast('Indirizzo Google inserito: scrivi il PIN e premi Collega'); } }, 50);
+    }
+  }catch(e){}
   $('cloud-url-f').hidden = !!CLOUD_URL;
+  $('cbar-btn').onclick = ()=>{ try{ location.hash = 'impostazioni'; }catch(e){} showTab('impostazioni'); setTimeout(()=>{ const t = cloudUrl() ? $('cloud-pin') : $('cloud-url'); t.scrollIntoView({block:'center'}); t.focus(); }, 50); };
+  $('cloud-link-copy').onclick = async ()=>{ try{ await navigator.clipboard.writeText($('cloud-link').value); toast('Link copiato'); }catch(e){ $('cloud-link').select(); toast('Seleziona il link e copialo'); } };
+  $('bk-now').onclick = async ()=>{
+    if (!cloudOn()){ toast('Prima collega questo dispositivo a Google Drive'); return; }
+    const e = $('bk-status'); e.className = 'chip'; e.textContent = 'Backup in corso…'; $('bk-now').disabled = true;
+    try{
+      const res = await fetch(cloudUrl(), {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({pin:S.cloud.pin, ops:[], backupNow:true})});
+      const j = await res.json();
+      if (j.ok && j.backup && j.backup.url){ bkShow(j.backup); toast('Backup salvato su Drive'); }
+      else if (j.ok){ bkShow(j.backup); toast('Il progetto Google va aggiornato: incolla il nuovo Codice.gs ed esegui setup'); }
+      else { e.className = 'chip bad'; e.textContent = j.error === 'pin' ? 'PIN sbagliato' : 'Errore: ' + j.error; }
+    }catch(err){ e.className = 'chip bad'; e.textContent = 'Non raggiungo Google Drive'; }
+    $('bk-now').disabled = false;
+  };
   $('cloud-url').value = S.cloud.url; $('cloud-pin').value = S.cloud.pin;
   const btns = () => { $('cloud-sync').disabled = $('cloud-off').disabled = !cloudOn(); };
   $('cloud-connect').onclick = async ()=>{
     S.cloud.url = $('cloud-url').value.trim(); S.cloud.pin = $('cloud-pin').value.trim(); save(); btns();
     if (!cloudOn()){ cloudState('Scrivi indirizzo e PIN', 'warn'); return; }
     cloudState('Collegamento in corso…');
-    if (await cloudPushAll()) toast('Archivio condiviso collegato');
+    cloudLink();
+    if (await cloudPushAll()) toast('Collegato: i salvataggi ora vanno su Google Drive');
   };
   $('cloud-sync').onclick = ()=>{ cloudState('Aggiornamento…'); cloudSync(); };
-  $('cloud-off').onclick = ()=>{ S.cloud.pin = ''; S.pending = []; $('cloud-pin').value = ''; save(); btns(); cloudState('Non collegato'); };
+  $('cloud-off').onclick = ()=>{ S.cloud.pin = ''; S.pending = []; $('cloud-pin').value = ''; save(); btns(); cloudState('Non collegato'); cloudBar(); };
   btns();
+  cloudLink(); cloudBar();
   if (cloudOn()){ cloudState('Collegamento in corso…'); cloudSync(); }
   setInterval(()=>{ if (!document.hidden) cloudSync(); }, 90000);
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) cloudSync(); });
