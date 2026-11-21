@@ -98,6 +98,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
 .lbl .code-txt{font-size:7pt;font-family:monospace;letter-spacing:.3px}
 .lbl .desc{font-weight:700;text-transform:uppercase;text-align:center;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
 .lbl .frame{position:absolute;inset:1mm;border:0 solid #000}
+.lbl .half{position:absolute;top:0}
+.lbl .cutline{position:absolute;top:0;bottom:0;border-left:.3mm dashed #000;z-index:3}
 .lbl .txt{position:absolute;inset:0;padding:1.5mm;display:flex;flex-direction:column}
 .lbl .txt-in{display:flex;flex-direction:column;flex:none;width:max-content}
 .lbl .ln{white-space:pre;line-height:1.08}
@@ -160,7 +162,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
 @media (max-width:860px){
   .view.on,.view.one.on{grid-template-columns:minmax(0,1fr)}
   .side{position:static}
-  #view-cartellini .side{order:-1}
+  #view-cartellini .side,#view-meta .side{order:-1}
   .top-in{padding-top:8px;gap:0 16px}
   .brand{font-size:20px;padding-bottom:4px}
   .tab{padding:9px 11px;font-size:15px}
@@ -189,6 +191,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
       <button class="tab" role="tab" data-tab="ean" id="tab-ean">Etichette EAN</button>
       <button class="tab" role="tab" data-tab="qr" id="tab-qr">Codice QR</button>
       <button class="tab" role="tab" data-tab="cartellini" id="tab-cartellini">Cartellini</button>
+      <button class="tab" role="tab" data-tab="meta" id="tab-meta">Cartellino a metà</button>
       <button class="tab" role="tab" data-tab="impostazioni" id="tab-impostazioni">Impostazioni</button>
     </nav>
   </div>
@@ -375,6 +378,65 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-2);outline:none}
 </section>
 
 <!-- ============ IMPOSTAZIONI ============ -->
+<!-- ============ CARTELLINO A META ============ -->
+<section class="view" id="view-meta">
+  <div class="col">
+    <div class="card">
+      <h2>Metà sinistra</h2>
+      <div class="lines" id="meta-L-lines"></div>
+      <div class="acts"><button class="btn" id="meta-L-add" type="button">Aggiungi riga</button></div>
+      <div class="row">
+        <div class="f" style="flex-basis:240px"><span class="lab">Allineamento</span>
+          <div class="seg" id="meta-L-ah"><button type="button" data-v="l">Sinistra</button><button type="button" data-v="c">Centro</button><button type="button" data-v="r">Destra</button></div>
+        </div>
+        <div class="f" style="flex-basis:240px"><span class="lab">Posizione</span>
+          <div class="seg" id="meta-L-av"><button type="button" data-v="t">Alto</button><button type="button" data-v="c">Centro</button><button type="button" data-v="b">Basso</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Metà destra</h2>
+      <div class="lines" id="meta-R-lines"></div>
+      <div class="acts">
+        <button class="btn" id="meta-R-add" type="button">Aggiungi riga</button>
+        <button class="btn" id="meta-copy" type="button">Copia qui la metà sinistra</button>
+      </div>
+      <div class="row">
+        <div class="f" style="flex-basis:240px"><span class="lab">Allineamento</span>
+          <div class="seg" id="meta-R-ah"><button type="button" data-v="l">Sinistra</button><button type="button" data-v="c">Centro</button><button type="button" data-v="r">Destra</button></div>
+        </div>
+        <div class="f" style="flex-basis:240px"><span class="lab">Posizione</span>
+          <div class="seg" id="meta-R-av"><button type="button" data-v="t">Alto</button><button type="button" data-v="c">Centro</button><button type="button" data-v="b">Basso</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Per tutte e due</h2>
+      <div class="row">
+        <label class="f s"><span>Bordo (pt)</span><input type="number" id="meta-border" min="0" max="8" step="0.5" value="1.5"></label>
+        <label class="f s"><span>Copie</span><input type="number" id="meta-copies" min="1" max="200" value="1"></label>
+      </div>
+      <label class="sw"><input type="checkbox" id="meta-fit" checked> Rimpicciolisci se non entra</label>
+      <label class="sw"><input type="checkbox" id="meta-cut" checked> Linea tratteggiata per tagliare al centro</label>
+    </div>
+  </div>
+  <div class="col side">
+    <div class="card">
+      <h2>Anteprima</h2>
+      <div class="pv"><div class="pv-box" id="meta-pv"></div></div>
+      <p class="pv-note" id="meta-pv-note"></p>
+      <div class="acts">
+        <button class="btn pri" id="meta-print" type="button">Stampa</button>
+        <button class="btn blue" id="meta-save" type="button">Salva in archivio</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Cartellini a metà salvati</h2>
+      <div class="list" id="meta-list"></div>
+    </div>
+  </div>
+</section>
+
 <section class="view one" id="view-impostazioni">
   <div class="col">
     <div class="card">
@@ -466,11 +528,11 @@ const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzx1X1SY_tqFq3MBzEYFt
 /* ---------- dati ---------- */
 const KEY = 'unieuro_rc_etichette_v1';
 const DEF = {
-  set:{w:56,h:30,ox:0,oy:0,dash:true},
+  set:{w:58,h:30,ox:0,oy:0,dash:true},
   ean:[], labels:[], qrHist:[], queue:[],
   dEan:{code:'',desc:'',mode:'bc'},
   dQr:{type:'text',text:'https://www.unieuro.it',ssid:'',pass:'',cap:'',size:5,level:'M'},
-  dCar:null, migrated:false, cloud:{url:'',pin:''}, pending:[]
+  dCar:null, dMeta:null, setV:2, migrated:false, cloud:{url:'',pin:''}, pending:[]
 };
 const TPL = [
   {n:'Sottocosto', lines:[{text:'OFFERTA',size:11,b:true},{text:'SOTTOCOSTO',size:21,b:true},{text:'fino a esaurimento scorte',size:8,i:true}]},
@@ -487,7 +549,7 @@ let memOnly = false;
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if (raw){ const o = JSON.parse(raw); S = Object.assign(S, o); S.set = Object.assign({}, DEF.set, o.set||{}); S.dEan = Object.assign({}, DEF.dEan, o.dEan||{}); S.dQr = Object.assign({}, DEF.dQr, o.dQr||{}); S.cloud = Object.assign({}, DEF.cloud, o.cloud||{}); if (!Array.isArray(S.pending)) S.pending = []; }
+    if (raw){ const o = JSON.parse(raw); S = Object.assign(S, o); S.set = Object.assign({}, DEF.set, o.set||{}); if (!o.setV){ if (S.set.w===56 && S.set.h===30) S.set.w = 58; S.setV = 2; } S.dEan = Object.assign({}, DEF.dEan, o.dEan||{}); S.dQr = Object.assign({}, DEF.dQr, o.dQr||{}); S.cloud = Object.assign({}, DEF.cloud, o.cloud||{}); if (!Array.isArray(S.pending)) S.pending = []; }
     if (!S.migrated){ // recupera gli archivi delle vecchie pagine, se aperte dallo stesso posto
       try{ (JSON.parse(localStorage.getItem('unieuro_db_v4'))||[]).forEach(x=>{ if (x && x.code && !S.ean.some(e=>e.code===x.code)) S.ean.push({id:uid(),code:String(x.code),desc:String(x.desc||'')}); }); }catch(e){}
       try{ (JSON.parse(localStorage.getItem('unieuro_labels'))||[]).forEach(x=>{ if (!x || !x.lines) return;
@@ -546,7 +608,7 @@ async function cloudSync(){
       S.pending = S.pending.slice(ops.length);
       cloudFail = false; if (j.backup) bkShow(j.backup);
       if (S.pending.length) cloudAgain = true;
-      else { S.ean = j.ean || []; S.labels = j.labels || []; if (Array.isArray(j.qr)) S.qrHist = j.qr; eanListRender(); carListRender(); qrHistRender(); }
+      else { S.ean = j.ean || []; S.labels = j.labels || []; if (Array.isArray(j.qr)) S.qrHist = j.qr; eanListRender(); carListRender(); metaListRender(); qrHistRender(); }
       save(); setCount(); ok = true;
       cloudState('Collegato. Aggiornato alle ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}), 'ok');
     }
@@ -666,7 +728,7 @@ function qrPNG(text, level, px){
 
 /* ---------- costruzione etichette ---------- */
 const mm = v => v + 'mm';
-function lblBase(cls){ return el('div', {class:'lbl'+(cls?' '+cls:''), style:'width:'+mm(S.set.w)+';height:'+mm(S.set.h)}); }
+function lblBase(cls, w, h){ return el('div', {class:'lbl'+(cls?' '+cls:''), style:'width:'+mm(w||S.set.w)+';height:'+mm(h||S.set.h)}); }
 function descSize(t){ const n = t.length; return n<=16 ? 10 : n<=22 ? 8.5 : n<=30 ? 7 : 6; }
 function eanLabel(it){
   const L = lblBase(), cut = el('div', {class:'cut'+(S.set.dash?' dash':'')});
@@ -695,8 +757,8 @@ function qrSheet(d, text){
   if (d.cap) s.append(el('div', {class:'cap'}, d.cap));
   return s;
 }
-function carLabel(c, edit){
-  const L = lblBase(), fr = el('div', {class:'frame', style:'border-width:'+c.border+'pt'});
+function carLabel(c, edit, w, h){
+  const L = lblBase('', w, h), fr = el('div', {class:'frame', style:'border-width:'+c.border+'pt'});
   const J = {t:'flex-start',c:'center',b:'flex-end'}, A = {l:'flex-start',c:'center',r:'flex-end'}, T = {l:'left',c:'center',r:'right'};
   const txt = el('div', {class:'txt', style:'justify-content:'+J[c.av]+';align-items:'+A[c.ah]});
   const inn = el('div', {class:'txt-in', style:'text-align:'+T[c.ah]+';align-items:'+A[c.ah]});
@@ -956,8 +1018,9 @@ function carFill(){
 }
 function carListRender(){
   const box = $('car-list'); box.innerHTML = '';
-  if (!S.labels.length){ box.append(el('div', {class:'empty'}, 'Nessun cartellino salvato.')); return; }
-  S.labels.forEach(x=>{
+  const list = S.labels.filter(x=>x.tipo!=='meta' && Array.isArray(x.lines));
+  if (!list.length){ box.append(el('div', {class:'empty'}, 'Nessun cartellino salvato.')); return; }
+  list.forEach(x=>{
     const t = x.lines.map(l=>l.text).filter(Boolean);
     box.append(el('div', {class:'item'},
       el('button', {class:'main', type:'button', onclick:()=>{ S.dCar = JSON.parse(JSON.stringify(x)); delete S.dCar.id; carFill(); }}, el('b', null, t[0] || 'Cartellino'), el('small', null, t.slice(1).join(' · ') || (x.lines.length + ' righe'))),
@@ -1065,14 +1128,88 @@ function carInit(){
   carListRender(); carFill();
 }
 
+/* ---------- scheda Cartellino a metà ---------- */
+const newHalf = (t) => ({lines:[{text:t,size:16,b:true,i:false,u:false}], ah:'c', av:'c'});
+const newMeta = () => ({L:newHalf('SINISTRA'), R:newHalf('DESTRA'), border:1.5, fit:true, cut:true});
+function metaLabel(m){
+  const w = S.set.w, h = S.set.h, hw = w/2, L = lblBase('', w, h);
+  ['L','R'].forEach((k, i)=>{
+    const half = carLabel({lines:m[k].lines, ah:m[k].ah, av:m[k].av, border:m.border, fit:m.fit, imgs:[]}, false, hw, h);
+    half.classList.add('half'); half.style.left = mm(i*hw);
+    L.append(half);
+  });
+  if (m.cut) L.append(el('div', {class:'cutline', style:'left:'+mm(hw)}));
+  return L;
+}
+function metaLinesRender(k){
+  const box = $('meta-'+k+'-lines'), lines = S.dMeta[k].lines, side = k==='L' ? 'sinistra' : 'destra'; box.innerHTML = '';
+  lines.forEach((l, i)=>{
+    const fb = (p, t, lab, st) => el('button', {type:'button', 'aria-pressed':l[p]?'true':'false', title:lab, 'aria-label':lab, style:st, onclick:e=>{ l[p] = !l[p]; e.currentTarget.setAttribute('aria-pressed', l[p]?'true':'false'); metaRender(); }}, t);
+    box.append(el('div', {class:'line'},
+      el('input', {type:'text', id:'meta-'+k+'-l-'+i, value:l.text, placeholder:'Testo riga '+(i+1), 'aria-label':'Metà '+side+', testo riga '+(i+1), oninput:e=>{ l.text = e.target.value; metaRender(); }}),
+      el('input', {type:'number', min:5, max:60, value:l.size, 'aria-label':'Metà '+side+', grandezza riga '+(i+1)+' in punti', oninput:e=>{ l.size = clamp(e.target.value,5,60,12); metaRender(); }}),
+      el('div', {class:'fmt'}, fb('b','B','Grassetto','font-weight:700'), fb('i','I','Corsivo','font-style:italic'), fb('u','U','Sottolineato','text-decoration:underline')),
+      el('button', {class:'btn sm del', type:'button', disabled:lines.length<2, 'aria-label':'Elimina riga '+(i+1)+' della metà '+side, onclick:()=>{ lines.splice(i,1); metaLinesRender(k); metaRender(); }}, 'Elimina')));
+  });
+}
+function metaRender(){
+  const m = S.dMeta;
+  m.border = clamp($('meta-border').value,0,8,1.5); m.fit = $('meta-fit').checked; m.cut = $('meta-cut').checked; save();
+  showPreview('meta-pv', metaLabel(m));
+  $('meta-pv-note').textContent = 'Etichetta ' + S.set.w + ' × ' + S.set.h + ' mm, due metà da ' + (S.set.w/2) + ' × ' + S.set.h + ' mm';
+}
+const metaPaint = [];
+function metaFill(){
+  const m = S.dMeta;
+  $('meta-border').value = m.border; $('meta-fit').checked = m.fit !== false; $('meta-cut').checked = m.cut !== false;
+  metaPaint.forEach(p=>p()); metaLinesRender('L'); metaLinesRender('R'); metaRender();
+}
+function metaText(x){
+  const t = k => x[k].lines.map(l=>l.text).filter(Boolean).join(' ') || '…';
+  return [t('L'), t('R')];
+}
+function metaListRender(){
+  const box = $('meta-list'); box.innerHTML = '';
+  const list = S.labels.filter(x=>x.tipo==='meta' && x.L && x.R);
+  if (!list.length){ box.append(el('div', {class:'empty'}, 'Nessun cartellino a metà salvato.')); return; }
+  list.forEach(x=>{
+    const t = metaText(x);
+    box.append(el('div', {class:'item'},
+      el('button', {class:'main', type:'button', onclick:()=>{ S.dMeta = JSON.parse(JSON.stringify({L:x.L, R:x.R, border:x.border, fit:x.fit, cut:x.cut})); metaFill(); window.scrollTo({top:0,behavior:'smooth'}); }},
+        el('b', null, t[0]), el('small', null, 'Destra: ' + t[1])),
+      el('button', {class:'btn sm del', type:'button', 'aria-label':'Elimina cartellino a metà', onclick:()=>{
+        const i = S.labels.indexOf(x); S.labels.splice(i,1); save(); metaListRender(); setCount(); cloudOp('del','labels',x);
+        toast('Cartellino eliminato', 'Annulla', ()=>{ S.labels.splice(i,0,x); save(); metaListRender(); cloudOp('up','labels',x); });
+      }}, 'Elimina')));
+  });
+}
+function metaInit(){
+  if (!S.dMeta || !S.dMeta.L || !S.dMeta.R) S.dMeta = newMeta();
+  ['L','R'].forEach(k=>{
+    metaPaint.push(segInit('meta-'+k+'-ah', ()=>S.dMeta[k].ah, v=>{ S.dMeta[k].ah = v; metaRender(); }));
+    metaPaint.push(segInit('meta-'+k+'-av', ()=>S.dMeta[k].av, v=>{ S.dMeta[k].av = v; metaRender(); }));
+    $('meta-'+k+'-add').onclick = ()=>{ const ls = S.dMeta[k].lines; ls.push({text:'',size:12,b:false,i:false,u:false}); metaLinesRender(k); metaRender(); const f = $('meta-'+k+'-l-'+(ls.length-1)); if (f) f.focus(); };
+  });
+  $('meta-copy').onclick = ()=>{ const old = S.dMeta.R; S.dMeta.R = JSON.parse(JSON.stringify(S.dMeta.L)); metaFill();
+    toast('Metà sinistra copiata a destra', 'Annulla', ()=>{ S.dMeta.R = old; metaFill(); }); };
+  $('meta-border').addEventListener('input', metaRender);
+  ['meta-fit','meta-cut'].forEach(i=>$(i).addEventListener('change', metaRender));
+  $('meta-print').onclick = ()=>{ const m = JSON.parse(JSON.stringify(S.dMeta)); printNodes(rep(()=>metaLabel(m), $('meta-copies').value)); };
+  $('meta-save').onclick = ()=>{
+    const it = Object.assign(JSON.parse(JSON.stringify(S.dMeta)), {id:uid(), tipo:'meta', lines:[]});
+    S.labels.unshift(it); save(); metaListRender(); setCount(); toast('Cartellino a metà salvato'); cloudOp('up','labels',it);
+  };
+  metaListRender(); metaFill();
+}
+
 /* ---------- impostazioni ---------- */
-function setCount(){ $('set-count').textContent = S.ean.length + ' prodotti, ' + S.labels.length + ' cartellini, ' + S.qrHist.length + ' QR recenti' + (memOnly ? '. Attenzione: questo browser non sta salvando i dati.' : '.'); }
-function renderAll(){ eanRender(); qrRender(); carRender(); setCount(); }
+function setCount(){ $('set-count').textContent = S.ean.length + ' prodotti, ' + S.labels.filter(x=>x.tipo!=='meta').length + ' cartellini, ' + S.labels.filter(x=>x.tipo==='meta').length + ' cartellini a metà, ' + S.qrHist.length + ' QR recenti' + (memOnly ? '. Attenzione: questo browser non sta salvando i dati.' : '.'); }
+function renderAll(){ eanRender(); qrRender(); carRender(); metaRender(); setCount(); }
 function setInit(){
   const s = S.set;
   $('set-w').value = s.w; $('set-h').value = s.h; $('set-ox').value = s.ox; $('set-oy').value = s.oy; $('set-dash').checked = s.dash;
-  const rd = ()=>{ s.w = clamp($('set-w').value,20,150,56); s.h = clamp($('set-h').value,10,150,30); s.ox = clamp($('set-ox').value,-10,10,0); s.oy = clamp($('set-oy').value,-10,10,0); s.dash = $('set-dash').checked; save(); };
-  ['set-w','set-h','set-ox','set-oy','set-dash'].forEach(i=>$(i).addEventListener('change', rd));
+  const rd = ()=>{ s.w = clamp($('set-w').value,20,150,58); s.h = clamp($('set-h').value,10,150,30); s.ox = clamp($('set-ox').value,-10,10,0); s.oy = clamp($('set-oy').value,-10,10,0); s.dash = $('set-dash').checked; save(); };
+  ['set-w','set-h','set-ox','set-oy','set-dash'].forEach(i=>$(i).addEventListener('change', ()=>{ rd(); renderAll(); }));
   $('set-test').onclick = ()=>{ rd(); const L = lblBase('test'); L.append(el('div', null, 'PROVA', el('br'), s.w + ' × ' + s.h + ' mm')); printNodes([L]); };
   $('set-export').onclick = ()=>{
     try{ const data = JSON.stringify({app:'etichette-unieuro-rc', v:1, set:S.set, ean:S.ean, labels:S.labels, qrHist:S.qrHist}, null, 1);
@@ -1090,8 +1227,8 @@ function setInit(){
         const o = JSON.parse(r.result); if (!o || o.app !== 'etichette-unieuro-rc') throw 0;
         let n = 0;
         (o.ean||[]).forEach(x=>{ if (x && x.code && !S.ean.some(y=>y.code===x.code)){ S.ean.push({id:uid(),code:String(x.code),desc:String(x.desc||'')}); n++; } });
-        (o.labels||[]).forEach(x=>{ if (x && Array.isArray(x.lines) && !S.labels.some(y=>JSON.stringify(y.lines)===JSON.stringify(x.lines))){ S.labels.push(Object.assign(newCar(), {imgs:undefined}, x, {id:uid()})); n++; } });
-        save(); eanListRender(); carListRender(); setCount(); toast('Copia caricata: ' + n + ' elementi nuovi'); if (cloudOn()) cloudPushAll();
+        (o.labels||[]).forEach(x=>{ if (x && x.tipo==='meta' && x.L && x.R){ S.labels.push(Object.assign({}, x, {id:uid()})); n++; return; } if (x && Array.isArray(x.lines) && !S.labels.some(y=>JSON.stringify(y.lines)===JSON.stringify(x.lines))){ S.labels.push(Object.assign(newCar(), {imgs:undefined}, x, {id:uid()})); n++; } });
+        save(); eanListRender(); carListRender(); metaListRender(); setCount(); toast('Copia caricata: ' + n + ' elementi nuovi'); if (cloudOn()) cloudPushAll();
       }catch(err){ toast('File non valido: scegli una copia scaricata da questa app.'); }
       e.target.value = '';
     };
@@ -1101,7 +1238,7 @@ function setInit(){
 }
 
 /* ---------- schede ---------- */
-const TABS = ['ean','qr','cartellini','impostazioni'];
+const TABS = ['ean','qr','cartellini','meta','impostazioni'];
 function showTab(t){
   if (!TABS.includes(t)) t = 'ean';
   TABS.forEach(x=>{ $('view-'+x).classList.toggle('on', x===t); $('tab-'+x).setAttribute('aria-selected', x===t ? 'true' : 'false'); });
@@ -1113,7 +1250,7 @@ let rsT; window.addEventListener('resize', ()=>{ clearTimeout(rsT); rsT = setTim
 
 load();
 if (!libsOk()) $('libwarn').style.display = 'block';
-eanInit(); qrInit(); carInit(); setInit(); cloudInit();
+eanInit(); qrInit(); carInit(); metaInit(); setInit(); cloudInit();
 showTab(location.hash.slice(1));
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderAll);
 </script>
